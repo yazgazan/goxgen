@@ -1,0 +1,25 @@
+# Ignore all by default
+*
+
+# Don't ignore special offs
+!.gitignore
+!.editorconfig
+!.golangci.toml
+!.dockerignore
+!Dockerfile
+
+# Don't ignore directories, recursively
+!*/
+
+# Don't ignore Go files
+!**/*.go
+!**/*.gox
+!go.mod
+!go.sum
+
+# Don't ignore config files
+!**/*.yml
+!**/*.toml
+
+# Don't ignore documentation
+!**/*.md
