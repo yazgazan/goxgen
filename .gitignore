@@ -3,10 +3,12 @@
 
 # Don't ignore special offs
 !.gitignore
+!.gitmodules
 !.editorconfig
 !.golangci.toml
 !.dockerignore
 !Dockerfile
+!Makefile
 
 # Don't ignore directories, recursively
 !*/
@@ -23,3 +25,6 @@
 
 # Don't ignore documentation
 !**/*.md
+
+# Don't ignore submodules
+!go

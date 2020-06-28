@@ -1,0 +1,7 @@
+package components
+
+import "github.com/gopherjs/vecty"
+
+func bareContent() vecty.ComponentOrHTML {
+	return <div>I am bare content</div>
+}

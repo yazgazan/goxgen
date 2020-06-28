@@ -1,0 +1,50 @@
+package views
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/yazgazan/goxgen/src/example"
+	"github.com/yazgazan/goxgen/src"
+)
+
+func Index(ctx example.Context) gox.ComponentOrHTML {
+	T := func(body gox.ComponentOrHTML) gox.ComponentOrHTML {
+		return gox.Text(ctx.GetText(body.Render()))
+	}
+
+	return <Main Page={ctx.Page} User={ctx.User}>
+		<script type="text/javascript">
+			var user = {gox.Raw(JSON(ctx.User))};
+
+			console.log(user);
+		</script>
+		<p>
+			<T()>Hello user</T> {ctx.User.Name}!
+		</p>
+		<UserScore(ctx.User) style="color: red;" />
+		<LeaderBoard Competitors={ctx.Leaderboard} />
+		<div class="play">
+			<PlayButton() />
+		</div>
+	</Main>
+}
+
+func UserScore(u example.User, attrs gox.Applyer) gox.ComponentOrHTML {
+	return <p attrs={attrs}>
+		You have earned {u.Points} !
+    </p>
+}
+
+func PlayButton() gox.ComponentOrHTML {
+	return <button>Play Now!</button>
+}
+
+func JSON(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf(`{"error": %q}`, err)
+	}
+
+	return string(b)
+}

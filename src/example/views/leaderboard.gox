@@ -1,0 +1,46 @@
+package views
+
+import (
+	"github.com/yazgazan/goxgen/src/example"
+	"github.com/yazgazan/goxgen/src"
+)
+
+func LeaderBoardRow(u example.User) gox.ComponentOrHTML {
+	rowClass := ""
+	userName := u.Name
+
+	if u.ShowPremium() {
+		rowClass = "premium"
+	}
+	if u.Anonymous {
+		userName = "John Doe"
+	}
+
+	return <tr class={rowClass}>
+		<td>
+			<img src={u.Logo} />
+		</td>
+		<td>
+			<p>{userName}</p>
+		</td>
+		<td>
+			{u.Points}
+		</td>
+	</tr>
+}
+
+type LeaderBoard struct {
+	Competitors []example.User
+}
+
+func (b LeaderBoard) Render() gox.ComponentOrHTML {
+	rows := []gox.ComponentOrHTML{}
+
+	for _, c := range b.Competitors {
+		rows = append(rows, <LeaderBoardRow(c) />)
+	}
+
+	return <table>
+		{rows}
+	</table>
+}
