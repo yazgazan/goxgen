@@ -1,5 +1,5 @@
 
-GOROOT="${PWD}/go"
+GOROOT="$(shell pwd)/go"
 GO_PATH="${GOROOT}/bin"
 GOXGEN="1"
 
@@ -13,7 +13,6 @@ goxgen:
 
 env:
 	@echo "export GOROOT='${GOROOT}'"
-	@echo "${PATH}" | grep -q $(GO_PATH) && true || echo 'export PATH=$${PATH}:'$(GO_PATH)
 
 .PHONY: all go goxgen
 
