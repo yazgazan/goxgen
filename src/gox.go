@@ -2,234 +2,213 @@ package gox
 
 import (
 	"fmt"
+	"html/template"
 	"io"
 	"strings"
-	"text/template"
 )
 
 type MarkupOrChild interface {
 	isMarkupOrChild()
 }
 
-func markupOrChild(i interface{}) MarkupOrChild {
-	if m, ok := i.(MarkupOrChild); ok {
-		return m
-	}
-	if c, ok := i.(Component); ok {
-		return c.Render()
+type Writer func(io.Writer) error
+type HTML = Writer
+
+func (w Writer) isMarkupOrChild() {}
+func (w Writer) String() (string, error) {
+	b := &strings.Builder{}
+	err := w(b)
+
+	return b.String(), err
+}
+func (w Writer) WriteTo(dst io.Writer) error {
+	return w(dst)
+}
+
+func markupAndChildren(mm []MarkupOrChild) (MarkupList, []Writer, error) {
+	var (
+		markup   MarkupList
+		children []Writer
+	)
+	for _, m := range mm {
+		if ml, ok := m.(MarkupList); ok {
+			markup = append(markup, ml...)
+			continue
+		}
+		if a, ok := m.(Applyer); ok {
+			markup = append(markup, a)
+			continue
+		}
+		if wr, ok := m.(Writer); ok {
+			children = append(children, wr)
+			continue
+		}
+
+		return nil, nil, fmt.Errorf("unsupported type %T in Tag()", m)
 	}
 
-	switch t := i.(type) {
-	default:
-		panic(fmt.Errorf("markupOrChild: unsupported type %T", t))
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return &HTML{
-			text: fmt.Sprintf("%d", t),
+	return markup, children, nil
+}
+
+func Tag(tag string, mm ...MarkupOrChild) Writer {
+	return func(w io.Writer) error {
+		markup, children, err := markupAndChildren(mm)
+		if err != nil {
+			return err
 		}
-	case []ComponentOrHTML:
-		return ComponentOrHTMLList(t)
-	case string:
-		return &HTML{
-			text: template.HTMLEscapeString(t),
+
+		props := make(map[string]interface{}, len(markup))
+		markup.Apply(props)
+
+		if tag == "" && len(props) != 0 {
+			tag = "div"
 		}
+		if tag != "" && len(props) == 0 {
+			_, err := fmt.Fprintf(w, "<%s>", tag)
+			if err != nil {
+				return err
+			}
+		}
+		if tag != "" && len(props) != 0 {
+			_, err := fmt.Fprintf(w, "<%s", tag)
+			if err != nil {
+				return err
+			}
+			err = renderProperties(w, props)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write([]byte(">"))
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, wr := range children {
+			err := wr(w)
+			if err != nil {
+				return err
+			}
+		}
+
+		if tag != "" {
+			_, err := fmt.Fprintf(w, "</%s>", tag)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func Text(text string) Writer {
+	return func(w io.Writer) error {
+		_, err := io.WriteString(w, template.HTMLEscapeString(text))
+
+		return err
+	}
+}
+
+func Writers(cc ...Writer) Writer {
+	return func(w io.Writer) error {
+		for _, c := range cc {
+			err := c(w)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 }
 
 type Component interface {
-	Render() ComponentOrHTML
+	Render() Writer
 }
 
-type component struct {
-	Component
+func NewComponent(c Component) Writer {
+	return c.Render()
 }
 
-func NewComponent(c Component) ComponentOrHTML {
-	return &component{
-		Component: c,
-	}
-}
-
-func (component) isMarkupOrChild()   {}
-func (component) isComponentOrHTML() {}
-
-func (c component) Render() string {
-
-	c2 := c.Component.Render()
-
-	return c2.Render()
-}
-
-type ComponentOrHTML interface {
-	isComponentOrHTML()
-	isMarkupOrChild()
-
-	Render() string
-}
-
-type ComponentOrHTMLList []ComponentOrHTML
-
-func (ComponentOrHTMLList) isMarkupOrChild() {}
-
-type HTML struct {
-	tag        string
-	text       string
-	children   []ComponentOrHTML
-	properties map[string]interface{}
-}
-
-func (HTML) isMarkupOrChild()   {}
-func (HTML) isComponentOrHTML() {}
-
-func (h HTML) Render() string {
-	// TODO: handle self-closing tags properly (i.e img)
-
-	b := &strings.Builder{}
-	tag := h.tag
-	if tag == "" && len(h.properties) != 0 {
-		tag = "div"
-	}
-	if tag != "" && len(h.properties) == 0 {
-		fmt.Fprintf(b, "<%s>", tag)
-	}
-	if tag != "" && len(h.properties) != 0 {
-		fmt.Fprintf(b, "<%s ", tag)
-		h.renderProperties(b)
-		fmt.Fprint(b, "> ")
-	}
-
-	if h.text != "" {
-		fmt.Fprintf(b, "%s", h.text)
-	}
-
-	h.renderChildren(b)
-
-	if tag != "" {
-		fmt.Fprintf(b, "</%s>", tag)
-	}
-
-	return b.String()
-}
-
-func (h HTML) renderChildren(w io.Writer) {
-	for _, c := range h.children {
-		_, _ = io.WriteString(w, c.Render())
-	}
-}
-
-func (h HTML) renderProperties(w io.Writer) {
-	ss := []string{}
-	for k, v := range h.properties {
-		ss = append(ss, fmt.Sprintf("%s=%q", k, v))
-	}
-	fmt.Fprint(w, strings.Join(ss, " "))
-}
-
-type MarkupList struct {
-	list []Applyer
-}
-
-func (MarkupList) isMarkupOrChild() {}
-
-func (m MarkupList) Apply(h *HTML) {
-	for _, a := range m.list {
-		if a == nil {
-			continue
+func renderProperties(w io.Writer, props map[string]interface{}) error {
+	for k, v := range props {
+		_, err := fmt.Fprintf(w, " %s=%q", k, v)
+		if err != nil {
+			return err
 		}
-		a.Apply(h)
 	}
+
+	return nil
 }
 
 type Applyer interface {
-	Apply(h *HTML)
+	Apply(mm map[string]interface{})
 }
 
-func Tag(tag string, mm ...interface{}) *HTML {
-	h := &HTML{
-		tag: tag,
-	}
-	for _, m := range mm {
-		apply(markupOrChild(m), h)
-	}
-	return h
-}
+type Attributes = Applyer
 
-func Text(text string, mm ...interface{}) *HTML {
-	h := &HTML{
-		text: template.HTMLEscapeString(text),
-	}
-	for _, m := range mm {
-		apply(markupOrChild(m), h)
-	}
-	return h
-}
+type MarkupList []Applyer
 
-func Value(val interface{}) *HTML {
-	switch t := val.(type) {
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return &HTML{
-			text: fmt.Sprintf("%d", t),
-		}
-	case string:
-		h := &HTML{
-			text: template.HTMLEscapeString(t),
-		}
+func (MarkupList) isMarkupOrChild() {}
 
-		return h
-	case Raw:
-		return &HTML{
-			text: string(t),
+func (m MarkupList) Apply(mm map[string]interface{}) {
+	for _, a := range m {
+		if a == nil {
+			continue
 		}
-	case *HTML:
-		return t
-	case []ComponentOrHTML:
-		return &HTML{
-			children: t,
-		}
-	default:
-		panic(fmt.Errorf("Value: unsupported type %T", t))
+		a.Apply(mm)
 	}
 }
-
-type markupFunc func(h *HTML)
-
-func (m markupFunc) Apply(h *HTML) { m(h) }
 
 func Markup(m ...Applyer) MarkupList {
-	return MarkupList{list: m}
+	return MarkupList(m)
+}
+
+type markupFunc func(mm map[string]interface{})
+
+func (m markupFunc) Apply(mm map[string]interface{}) { m(mm) }
+
+func Property(key string, value interface{}) Applyer {
+	return markupFunc(func(mm map[string]interface{}) {
+		mm[key] = value
+	})
+}
+
+func Value(val interface{}) Writer {
+	return func(w io.Writer) error {
+		var err error
+
+		switch t := val.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			_, err = fmt.Fprintf(w, "%d", t)
+		case string:
+			_, err = io.WriteString(w, template.HTMLEscapeString(t))
+		case Raw:
+			_, err = io.WriteString(w, string(t))
+		case Writer:
+			err = t(w)
+		case []Writer:
+			for _, child := range t {
+				err = child(w)
+				if err != nil {
+					break
+				}
+			}
+		default:
+			err = fmt.Errorf("Value: unsupported type %T", t)
+		}
+
+		return err
+	}
 }
 
 type Raw string
 
-func (Raw) isMarkupOrChild()   {}
-func (Raw) isComponentOrHTML() {}
+func (Raw) isMarkupOrChild() {}
 
-func (r Raw) Render() string {
-	return string(r)
-}
-
-func Property(key string, value interface{}) Applyer {
-	// if key == "style" {
-	// 	panic(errors.New(`gox: Property called with key "style"; style package or Style should be used instead`))
-	// }
-	return markupFunc(func(h *HTML) {
-		if h.properties == nil {
-			h.properties = make(map[string]interface{})
-		}
-		h.properties[key] = value
-	})
-}
-
-func apply(m MarkupOrChild, h *HTML) {
-	switch m := m.(type) {
-	case MarkupList:
-		m.Apply(h)
-	case nil:
-		h.children = append(h.children, nil)
-	case *HTML, *component:
-		h.children = append(h.children, m.(ComponentOrHTML))
-	case ComponentOrHTMLList:
-		h.children = append(h.children, m...)
-	default:
-		panic(fmt.Errorf("gox: internal error (unexpected MarkupOrChild type %T)", m))
+func Error(err error) Writer {
+	return func(io.Writer) error {
+		return err
 	}
 }

@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	HTMLTypeName            = "HTML"
-	ComponentOrHTMLTypeName = "ComponentOrHTML"
-	MarkupListTypeName      = "MarkupList"
-	ApplyerTypeName         = "Applyer"
+	WriterTypeName = "Writer"
+	HTMLTypeName   = "HTML"
+
+	AttrsTypeName   = "Attributes"
+	ApplyerTypeName = "Applyer"
 )
 
 func (g *GoxTranspiler) loadPackages() (pkgs map[string]*packages.Package, loaded map[string]string) {
@@ -140,7 +141,7 @@ func CheckStruct(location string, pkg *packages.Package, name string, goxexpr *a
 		switch named.Obj().Name() {
 		default:
 			fmt.Fprintf(os.Stderr, "%s: Warning: field Body (type %s) in gox component of type %s does not look like a body type\n", location, TypeName(bodyField), ObjName(obj))
-		case HTMLTypeName, ComponentOrHTMLTypeName:
+		case HTMLTypeName, WriterTypeName:
 		}
 	}
 }
@@ -219,7 +220,7 @@ func CheckCallBody(location, funcName string, typ types.Type) {
 	switch named.Obj().Name() {
 	default:
 		fmt.Fprintf(os.Stderr, "%s: Warning: body argument of %s (type %s) does not look like a body type\n", location, funcName, TypeName(typ))
-	case HTMLTypeName, ComponentOrHTMLTypeName:
+	case HTMLTypeName, WriterTypeName:
 	}
 }
 
@@ -233,7 +234,7 @@ func CheckCallAttrs(location, funcName string, typ types.Type) {
 	switch named.Obj().Name() {
 	default:
 		fmt.Fprintf(os.Stderr, "%s: Warning: attributes argument of %s (type %s) does not look like a body type\n", location, funcName, TypeName(typ))
-	case MarkupListTypeName, ApplyerTypeName:
+	case AttrsTypeName, ApplyerTypeName:
 	}
 }
 

@@ -1,11 +1,11 @@
 package views
 
 import (
+	gox "github.com/yazgazan/goxgen/src"
 	"github.com/yazgazan/goxgen/src/example"
-	"github.com/yazgazan/goxgen/src"
 )
 
-func MainStyle() gox.ComponentOrHTML {
+func MainStyle() gox.HTML {
 	return gox.Tag("style", gox.Value(gox.Raw(`
 		body>h1 {
 			text-align: center;
@@ -73,12 +73,12 @@ func MainStyle() gox.ComponentOrHTML {
 }
 
 type Main struct {
-	Body	gox.ComponentOrHTML
-	Page	example.Page
-	User	example.User
+	Body gox.HTML
+	Page example.Page
+	User example.User
 }
 
-func (m Main) Render() gox.ComponentOrHTML {
+func (m Main) Render() gox.HTML {
 	return gox.Tag("html", gox.Text("\n\t\t"), MainStyle(), gox.Text("\n\t\t"), gox.Tag("body", gox.Text("\n\t\t\t"), gox.Tag("h1", gox.Value(m.Page.Title)), gox.Text("\n\t\t\t"), gox.NewComponent(&Header{User: m.User}), gox.Text("\n\t\t\t"), gox.Value(m.Body), gox.Text("\n\t\t\t"), Footer(), gox.Text("\n\t\t")), gox.Text("\n\t"))
 
 }
@@ -87,7 +87,7 @@ type Header struct {
 	User example.User
 }
 
-func (h Header) Render() gox.ComponentOrHTML {
+func (h Header) Render() gox.HTML {
 	loginButtonText := "Signup"
 
 	if h.User.IsLoggedIn() {
@@ -98,7 +98,7 @@ func (h Header) Render() gox.ComponentOrHTML {
 
 }
 
-func Footer() gox.ComponentOrHTML {
-	return gox.Tag("p", gox.Markup(gox.Property("class", "legal")), gox.Text("\n\tSome legal mumbo jumbo.\n"))
+func Footer() gox.HTML {
+	return gox.Tag("p", gox.Markup(gox.Property("class", "legal")), gox.Text("\n\t\tSome legal mumbo jumbo.\n\t"))
 
 }

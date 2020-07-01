@@ -1,11 +1,11 @@
 package views
 
 import (
+	gox "github.com/yazgazan/goxgen/src"
 	"github.com/yazgazan/goxgen/src/example"
-	"github.com/yazgazan/goxgen/src"
 )
 
-func LeaderBoardRow(u example.User) gox.ComponentOrHTML {
+func LeaderBoardRow(u example.User) gox.HTML {
 	rowClass := ""
 	userName := u.Name
 
@@ -24,8 +24,8 @@ type LeaderBoard struct {
 	Competitors []example.User
 }
 
-func (b LeaderBoard) Render() gox.ComponentOrHTML {
-	rows := []gox.ComponentOrHTML{}
+func (b LeaderBoard) Render() gox.HTML {
+	rows := []gox.HTML{}
 
 	for _, c := range b.Competitors {
 		rows = append(rows, LeaderBoardRow(c))

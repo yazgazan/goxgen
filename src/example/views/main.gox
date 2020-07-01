@@ -1,11 +1,11 @@
 package views
 
 import (
+	gox "github.com/yazgazan/goxgen/src"
 	"github.com/yazgazan/goxgen/src/example"
-	"github.com/yazgazan/goxgen/src"
 )
 
-func MainStyle() gox.ComponentOrHTML {
+func MainStyle() gox.HTML {
 	return <style>{gox.Raw(`
 		body>h1 {
 			text-align: center;
@@ -73,12 +73,12 @@ func MainStyle() gox.ComponentOrHTML {
 }
 
 type Main struct{
-	Body gox.ComponentOrHTML
+	Body gox.HTML
 	Page example.Page
 	User example.User
 }
 
-func (m Main) Render() gox.ComponentOrHTML {
+func (m Main) Render() gox.HTML {
 	return <html>
 		<MainStyle() />
 		<body>
@@ -94,7 +94,7 @@ type Header struct{
 	User example.User
 }
 
-func (h Header) Render() gox.ComponentOrHTML {
+func (h Header) Render() gox.HTML {
 	loginButtonText := "Signup"
 
 	if h.User.IsLoggedIn() {
@@ -113,8 +113,8 @@ func (h Header) Render() gox.ComponentOrHTML {
 	</div>
 }
 
-func Footer() gox.ComponentOrHTML {
+func Footer() gox.HTML {
 	return <p class="legal">
-	Some legal mumbo jumbo.
-</p>
+		Some legal mumbo jumbo.
+	</p>
 }

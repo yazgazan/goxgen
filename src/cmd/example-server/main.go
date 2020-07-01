@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"net/http"
 
@@ -27,7 +26,7 @@ func main() {
 
 			res := views.Index(ctx)
 
-			_, err := io.WriteString(w, res.Render())
+			err := res.WriteTo(w)
 			if err != nil {
 				log.Printf("Error: %v", err)
 			}

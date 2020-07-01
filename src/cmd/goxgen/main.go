@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -8,8 +9,10 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -87,10 +90,24 @@ func (g *GoxTranspiler) TranspileFile(path string, f os.FileInfo, err error) err
 	ofname := path[:len(path)-1] // lol
 	g.files[ofname] = file
 
+	b := &bytes.Buffer{}
+	g.cfg.Fprint(b, g.fset, file)
+	formatted, err := gofmt(b)
+	if err != nil {
+		fmt.Printf("Failed with error: %v", err)
+		log.Fatalf("ParseFile(%s): %v", name, err)
+		return err
+	}
+
 	// // cfg.Fprint(os.Stdout, fset, file)
 	of, err := os.Create(ofname)
-	g.cfg.Fprint(of, g.fset, file)
+	if err != nil {
+		fmt.Printf("Failed with error: %v", err)
+		log.Fatalf("ParseFile(%s): %v", name, err)
+		return err
+	}
 
+	_, err = io.Copy(of, formatted)
 	if err != nil {
 		fmt.Printf("Failed with error: %v", err)
 		log.Fatalf("ParseFile(%s): %v", name, err)
@@ -98,6 +115,27 @@ func (g *GoxTranspiler) TranspileFile(path string, f os.FileInfo, err error) err
 	}
 
 	return nil
+}
+
+func gofmt(r io.Reader) (io.Reader, error) {
+	out := &bytes.Buffer{}
+	errB := &bytes.Buffer{}
+
+	cmd := exec.Command("gofmt", "-s")
+	cmd.Stdin = r
+	cmd.Stdout = out
+	cmd.Stderr = errB
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	if errB.Len() != 0 {
+		_, _ = io.Copy(os.Stderr, errB)
+		return nil, fmt.Errorf("gofmt returned with errors")
+	}
+
+	return out, nil
 }
 
 func Transpile(goxTargetPackage, directory string) {

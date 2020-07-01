@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 
+	gox "github.com/yazgazan/goxgen/src"
 	"github.com/yazgazan/goxgen/src/example"
-	"github.com/yazgazan/goxgen/src"
 )
 
-func Index(ctx example.Context) gox.ComponentOrHTML {
-	T := func(body gox.ComponentOrHTML) gox.ComponentOrHTML {
-		return gox.Text(ctx.GetText(body.Render()))
+func Index(ctx example.Context) gox.HTML {
+	T := func(body gox.HTML) gox.HTML {
+		s, err := body.String()
+		if err != nil {
+			return gox.Error(err)
+		}
+
+		return gox.Text(ctx.GetText(s))
 	}
 
 	return <Main Page={ctx.Page} User={ctx.User}>
@@ -30,13 +35,13 @@ func Index(ctx example.Context) gox.ComponentOrHTML {
 	</Main>
 }
 
-func UserScore(u example.User, attrs gox.Applyer) gox.ComponentOrHTML {
+func UserScore(u example.User, attrs gox.Attributes) gox.HTML {
 	return <p attrs={attrs}>
 		You have earned {u.Points} !
     </p>
 }
 
-func PlayButton() gox.ComponentOrHTML {
+func PlayButton() gox.HTML {
 	return <button>Play Now!</button>
 }
 

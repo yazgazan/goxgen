@@ -9,4 +9,4 @@ import (
 	gox "github.com/yazgazan/goxgen/src"
 )
 
-func T(body gox.ComponentOrHTML) gox.ComponentOrHTML
+func T(gox.HTML) gox.HTML
