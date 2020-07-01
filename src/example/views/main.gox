@@ -79,15 +79,19 @@ type Main struct{
 }
 
 func (m Main) Render() gox.HTML {
-	return <html>
-		<MainStyle() />
-		<body>
-			<h1>{m.Page.Title}</h1>
-			<Header User={m.User} />
-			{m.Body}
-			<Footer() />
-		</body>
-	</html>
+	return gox.Doctype("html",
+		<html>
+			<head>
+				<MainStyle() />
+			</head>
+			<body>
+				<h1>{m.Page.Title}</h1>
+				<Header User={m.User} />
+				{m.Body}
+				<Footer() />
+			</body>
+		</html>,
+	)
 }
 
 type Header struct{

@@ -79,8 +79,9 @@ type Main struct {
 }
 
 func (m Main) Render() gox.HTML {
-	return gox.Tag("html", gox.Text("\n\t\t"), MainStyle(), gox.Text("\n\t\t"), gox.Tag("body", gox.Text("\n\t\t\t"), gox.Tag("h1", gox.Value(m.Page.Title)), gox.Text("\n\t\t\t"), gox.NewComponent(&Header{User: m.User}), gox.Text("\n\t\t\t"), gox.Value(m.Body), gox.Text("\n\t\t\t"), Footer(), gox.Text("\n\t\t")), gox.Text("\n\t"))
-
+	return gox.Doctype("html",
+		gox.Tag("html", gox.Text("\n\t\t\t"), gox.Tag("head", gox.Text("\n\t\t\t\t"), MainStyle(), gox.Text("\n\t\t\t")), gox.Text("\n\t\t\t"), gox.Tag("body", gox.Text("\n\t\t\t\t"), gox.Tag("h1", gox.Value(m.Page.Title)), gox.Text("\n\t\t\t\t"), gox.NewComponent(&Header{User: m.User}), gox.Text("\n\t\t\t\t"), gox.Value(m.Body), gox.Text("\n\t\t\t\t"), Footer(), gox.Text("\n\t\t\t")), gox.Text("\n\t\t")),
+	)
 }
 
 type Header struct {

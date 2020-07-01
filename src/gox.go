@@ -1,27 +1,27 @@
 package gox
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
-	"strings"
 )
 
 type MarkupOrChild interface {
 	isMarkupOrChild()
 }
 
-type Writer func(io.Writer) error
+type Writer func(io.Writer) (int64, error)
 type HTML = Writer
 
 func (w Writer) isMarkupOrChild() {}
 func (w Writer) String() (string, error) {
-	b := &strings.Builder{}
-	err := w(b)
+	b := &bytes.Buffer{}
+	_, err := w.WriteTo(b)
 
 	return b.String(), err
 }
-func (w Writer) WriteTo(dst io.Writer) error {
+func (w Writer) WriteTo(dst io.Writer) (int64, error) {
 	return w(dst)
 }
 
@@ -50,11 +50,44 @@ func markupAndChildren(mm []MarkupOrChild) (MarkupList, []Writer, error) {
 	return markup, children, nil
 }
 
+var (
+	selfClosingTags = map[string]bool{
+		"area":     true,
+		"base":     true,
+		"br":       true,
+		"col":      true,
+		"embed":    true,
+		"hr":       true,
+		"img":      true,
+		"input":    true,
+		"link":     true,
+		"meta":     true,
+		"param":    true,
+		"source":   true,
+		"track":    true,
+		"wbr":      true,
+		"command":  true,
+		"keygen":   true,
+		"menuitem": true,
+	}
+)
+
+func Doctype(typ string, document Writer) Writer {
+	return func(dst io.Writer) (int64, error) {
+		n, err := fmt.Fprintf(dst, "<!DOCTYPE %s>\n", typ)
+		if err != nil {
+			return int64(n), err
+		}
+
+		return document.WriteTo(dst)
+	}
+}
+
 func Tag(tag string, mm ...MarkupOrChild) Writer {
-	return func(w io.Writer) error {
+	return func(dst io.Writer) (int64, error) {
 		markup, children, err := markupAndChildren(mm)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		props := make(map[string]interface{}, len(markup))
@@ -63,63 +96,107 @@ func Tag(tag string, mm ...MarkupOrChild) Writer {
 		if tag == "" && len(props) != 0 {
 			tag = "div"
 		}
-		if tag != "" && len(props) == 0 {
-			_, err := fmt.Fprintf(w, "<%s>", tag)
-			if err != nil {
-				return err
-			}
+
+		selfClosing := selfClosingTags[tag] && len(children) == 0
+
+		n, err := renderOtag(dst, tag, props, selfClosing)
+		if err != nil {
+			return n, err
 		}
-		if tag != "" && len(props) != 0 {
-			_, err := fmt.Fprintf(w, "<%s", tag)
-			if err != nil {
-				return err
-			}
-			err = renderProperties(w, props)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write([]byte(">"))
-			if err != nil {
-				return err
-			}
+
+		if selfClosing {
+			return n, nil
 		}
 
 		for _, wr := range children {
-			err := wr(w)
+			nd, err := wr.WriteTo(dst)
+			n += nd
 			if err != nil {
-				return err
+				return n, err
 			}
 		}
 
-		if tag != "" {
-			_, err := fmt.Fprintf(w, "</%s>", tag)
-			if err != nil {
-				return err
-			}
+		nd, err := renderCtag(dst, tag)
+		n += nd
+		if err != nil {
+			return n, err
 		}
 
-		return nil
+		return n, nil
 	}
+}
+
+func renderOtag(dst io.Writer, tag string, props map[string]interface{}, selfClosing bool) (int64, error) {
+	var n int
+
+	if tag == "" {
+		return 0, nil
+	}
+
+	if len(props) == 0 && !selfClosing {
+		n, err := fmt.Fprintf(dst, "<%s>", tag)
+		return int64(n), err
+	}
+	if len(props) == 0 && selfClosing {
+		n, err := fmt.Fprintf(dst, "<%s/>", tag)
+		return int64(n), err
+	}
+
+	nd, err := fmt.Fprintf(dst, "<%s", tag)
+	n += nd
+	if err != nil {
+		return int64(n), err
+	}
+	nd, err = renderProperties(dst, props)
+	n += nd
+	if err != nil {
+		return int64(n), err
+	}
+
+	if selfClosing {
+		nd, err = dst.Write([]byte("/>"))
+		n += nd
+
+		return int64(n), err
+	}
+
+	nd, err = dst.Write([]byte(">"))
+	n += nd
+
+	return int64(n), err
+}
+
+func renderCtag(dst io.Writer, tag string) (int64, error) {
+	if tag == "" {
+		return 0, nil
+	}
+
+	n, err := fmt.Fprintf(dst, "</%s>", tag)
+
+	return int64(n), err
 }
 
 func Text(text string) Writer {
-	return func(w io.Writer) error {
-		_, err := io.WriteString(w, template.HTMLEscapeString(text))
+	return func(dst io.Writer) (int64, error) {
+		n, err := io.WriteString(dst, template.HTMLEscapeString(text))
 
-		return err
+		return int64(n), err
 	}
 }
 
-func Writers(cc ...Writer) Writer {
-	return func(w io.Writer) error {
-		for _, c := range cc {
-			err := c(w)
+func Writers(ww ...Writer) Writer {
+	return func(dst io.Writer) (int64, error) {
+		var n int64
+
+		for _, w := range ww {
+			nd, err := w.WriteTo(dst)
+			n += nd
 			if err != nil {
-				return err
+				return n, err
 			}
 		}
 
-		return nil
+		return n, nil
 	}
 }
 
@@ -131,15 +208,19 @@ func NewComponent(c Component) Writer {
 	return c.Render()
 }
 
-func renderProperties(w io.Writer, props map[string]interface{}) error {
+func renderProperties(dst io.Writer, props map[string]interface{}) (int, error) {
+	var n int
+
 	for k, v := range props {
-		_, err := fmt.Fprintf(w, " %s=%q", k, v)
+		s := fmt.Sprint(v)
+		nd, err := fmt.Fprintf(dst, " %s=%q", k, template.HTMLEscapeString(s))
 		if err != nil {
-			return err
+			return n + nd, err
 		}
+		n += nd
 	}
 
-	return nil
+	return n, nil
 }
 
 type Applyer interface {
@@ -176,21 +257,25 @@ func Property(key string, value interface{}) Applyer {
 }
 
 func Value(val interface{}) Writer {
-	return func(w io.Writer) error {
-		var err error
+	return func(dst io.Writer) (int64, error) {
+		var (
+			err error
+			n   int64
+			ni  int
+		)
 
 		switch t := val.(type) {
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-			_, err = fmt.Fprintf(w, "%d", t)
+			ni, err = fmt.Fprintf(dst, "%d", t)
 		case string:
-			_, err = io.WriteString(w, template.HTMLEscapeString(t))
+			ni, err = io.WriteString(dst, template.HTMLEscapeString(t))
 		case Raw:
-			_, err = io.WriteString(w, string(t))
+			ni, err = io.WriteString(dst, string(t))
 		case Writer:
-			err = t(w)
+			n, err = t.WriteTo(dst)
 		case []Writer:
 			for _, child := range t {
-				err = child(w)
+				n, err = child.WriteTo(dst)
 				if err != nil {
 					break
 				}
@@ -199,7 +284,7 @@ func Value(val interface{}) Writer {
 			err = fmt.Errorf("Value: unsupported type %T", t)
 		}
 
-		return err
+		return n + int64(ni), err
 	}
 }
 
@@ -208,7 +293,7 @@ type Raw string
 func (Raw) isMarkupOrChild() {}
 
 func Error(err error) Writer {
-	return func(io.Writer) error {
-		return err
+	return func(io.Writer) (int64, error) {
+		return 0, err
 	}
 }
