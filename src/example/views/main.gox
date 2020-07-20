@@ -1,0 +1,124 @@
+package views
+
+import (
+	gox "github.com/yazgazan/goxgen/src"
+	"github.com/yazgazan/goxgen/src/example"
+)
+
+func MainStyle() gox.HTML {
+	return <style>{gox.Raw(`
+		body>h1 {
+			text-align: center;
+		}
+
+		#menu {
+			width: 50%;
+			margin: auto;
+		}
+		#menu>ul {
+			text-align: center;
+		}
+		#menu>ul>li {
+			display: inline-block;
+			width: 10em;
+			margin-left: 1em;
+			margin-right: 1em;
+			padding: .1em;
+			background-color: lightgrey;
+		}
+
+		#header>button {
+			float: right;
+			margin-right: 2em;
+			margin-top: -3em;
+		}
+
+		body>p {
+			width: 75%;
+			margin: auto;
+			margin-top: 1em;
+			margin-bottom: 1em;
+		}
+
+		table {
+			width: 75%;
+			margin: auto;
+			border-collapse: collapse;
+		}
+		table td {
+			border-bottom: 1px solid black;
+		}
+		table img {
+			width: 3em;
+		}
+
+		.play {
+			padding-top: 3em;
+			text-align: center;
+		}
+
+		.legal {
+			width: 50%;
+			margin: auto;
+			text-align: center;
+			color: grey;
+			margin-top: 3em;
+			font-size: 0.7em;
+		}
+
+		.premium {
+			color: orange;
+		}
+	`)}</style>
+}
+
+type Main struct{
+	Body gox.HTML
+	Page example.Page
+	User example.User
+}
+
+func (m Main) Render() gox.HTML {
+	return gox.Doctype("html",
+		<html>
+			<head>
+				<MainStyle() />
+			</head>
+			<body>
+				<h1>{m.Page.Title}</h1>
+				<Header User={m.User} />
+				{m.Body}
+				<Footer() />
+			</body>
+		</html>,
+	)
+}
+
+type Header struct{
+	User example.User
+}
+
+func (h Header) Render() gox.HTML {
+	loginButtonText := "Signup"
+
+	if h.User.IsLoggedIn() {
+		loginButtonText = "Profile"
+	}
+
+	return <div id="header">
+		<div id="menu">
+			<ul>
+				<li>Leaderboard</li>
+				<li>Forum</li>
+				<li>{loginButtonText}</li>
+			</ul>
+		</div>
+		<PlayButton() />
+	</div>
+}
+
+func Footer() gox.HTML {
+	return <p class="legal">
+		Some legal mumbo jumbo.
+	</p>
+}

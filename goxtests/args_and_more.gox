@@ -1,0 +1,19 @@
+package components
+
+import "github.com/gopherjs/vecty"
+
+func asAnArg(arg vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+	return arg
+}
+
+func oohBoy() vecty.ComponentOrHTML {
+	header := <h1>Hello</h1>
+	content := <p>paragraphs</p>
+
+	// hello world I'm a comment
+	return <div class="content">
+		{header}
+		{content}
+		{asAnArg(<p>help I'm caught in the web</p>)}
+	</div>
+}

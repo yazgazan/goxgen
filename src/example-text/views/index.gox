@@ -1,0 +1,32 @@
+package views
+
+import (
+	gox "github.com/yazgazan/goxgen/src"
+	exampletext "github.com/yazgazan/goxgen/src/example-text"
+)
+
+func Index(ctx exampletext.Context) gox.Writer {
+	T := func(body gox.Writer) gox.Writer {
+		s, err := body.String()
+		if err != nil {
+			return gox.Error(err)
+		}
+
+		return gox.Text(ctx.GetText(s))
+	}
+
+	return <Main Page={ctx.Page} User={ctx.User}>
+<text><T()>Hello user</T> {ctx.User.Name}!</text>
+<UserScore(ctx.User)/>
+<LeaderBoard Competitors={ctx.Leaderboard} />
+<PlayButton() />
+</Main>
+}
+
+func UserScore(u exampletext.User) gox.Writer {
+	return <text>You have earned {u.Points} !</text>
+}
+
+func PlayButton() gox.Writer {
+	return <text>Play Now!</text>
+}

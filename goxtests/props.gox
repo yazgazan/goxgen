@@ -1,0 +1,56 @@
+package components
+
+import (
+	"strconv"
+	"github.com/gopherjs/vecty"
+	"syscall/js"
+)
+
+type PropsComponent struct {
+	vecty.Core
+	name string
+	other int
+}
+
+func (b *PropsComponent) Render() vecty.ComponentOrHTML {
+	return <div props="dot" props={"." + "props"} empty>
+		<h1>Holy shit it worked</h1>
+		now introducing: props
+		<h2>gox is JSX for Go</h2>
+		<p>why?</p>
+		<i>why not?</i>
+		<div>{vecty.Text(b.name)}</div>
+		{vecty.Text(strconv.Itoa(b.other + 10))}
+	</div>
+}
+
+type BodyComponent struct {
+	vecty.Core
+}
+
+func (b *BodyComponent) Render() vecty.ComponentOrHTML {
+	return <body>
+		<PropsComponent
+			name="hello"
+			other={123}/>
+		<ButtonComponent/>
+	</body>
+}
+
+type ButtonComponent struct {
+	vecty.Core
+	timesClicked int
+}
+
+func (b *ButtonComponent) Render() vecty.ComponentOrHTML {
+	return <button class="btn btn-primary" onClick={b.onClick}>
+		I'm a button
+		{vecty.Text(strconv.Itoa(b.timesClicked))}
+	</button>
+}
+
+func (b *ButtonComponent) onClick(e *vecty.Event) {
+	js.Global().Get("console").Call("log", b.timesClicked)
+	b.timesClicked++
+	vecty.Rerender(b)
+}
