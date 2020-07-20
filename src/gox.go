@@ -126,6 +126,22 @@ func Tag(tag string, mm ...MarkupOrChild) Writer {
 	}
 }
 
+func PlainText(ww ...Writer) Writer {
+	return func(out io.Writer) (int64, error) {
+		var nb int64
+
+		for _, w := range ww {
+			n, err := w.WriteTo(out)
+			nb += n
+			if err != nil {
+				return nb, err
+			}
+		}
+
+		return nb, nil
+	}
+}
+
 func renderOtag(dst io.Writer, tag string, props map[string]interface{}, selfClosing bool) (int64, error) {
 	var n int
 
@@ -275,7 +291,18 @@ func Value(val interface{}) Writer {
 			n, err = t.WriteTo(dst)
 		case []Writer:
 			for _, child := range t {
-				n, err = child.WriteTo(dst)
+				var (
+					n2 int64
+					n3 int
+				)
+
+				n2, err = child.WriteTo(dst)
+				n += n2
+				if err != nil {
+					break
+				}
+				n3, err = dst.Write([]byte{'\n'})
+				n += int64(n3)
 				if err != nil {
 					break
 				}

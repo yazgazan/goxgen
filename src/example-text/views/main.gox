@@ -1,0 +1,45 @@
+package views
+
+import (
+	gox "github.com/yazgazan/goxgen/src"
+	exampletext "github.com/yazgazan/goxgen/src/example-text"
+)
+
+type Main struct {
+	Body gox.Writer
+	Page exampletext.Page
+	User exampletext.User
+}
+
+func (m Main) Render() gox.Writer {
+	return <text>
+<text>{m.Page.Title}</text>
+<Header User={m.User} />
+{m.Body}
+<Footer() />
+</text>
+}
+
+type Header struct{
+	User exampletext.User
+}
+
+func (h Header) Render() gox.Writer {
+	loginButtonText := "Signup"
+
+	if h.User.IsLoggedIn() {
+		loginButtonText = "Profile"
+	}
+
+	return <text>
+<text>- Leaderboard</text>
+<text>- Forum</text>
+<text>- {loginButtonText}</text>
+
+<PlayButton() />
+</text>
+}
+
+func Footer() gox.Writer {
+	return <text>Some legal mumbo jumbo.</text>
+}
