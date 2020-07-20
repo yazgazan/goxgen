@@ -272,6 +272,12 @@ func Property(key string, value interface{}) Applyer {
 	})
 }
 
+func Attribute(key string, value interface{}) Applyer {
+	return markupFunc(func(mm map[string]interface{}) {
+		mm[key] = value
+	})
+}
+
 func Value(val interface{}) Writer {
 	return func(dst io.Writer) (int64, error) {
 		var (
