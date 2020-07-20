@@ -24,7 +24,7 @@ func Index(ctx example.Context) gox.HTML {
 
 			console.log(user);
 		</script>
-		<p>
+		<p style="color: blue;">
 			<T()>Hello user</T> {ctx.User.Name}!
 		</p>
 		<UserScore(ctx.User) style="color: red;" />
